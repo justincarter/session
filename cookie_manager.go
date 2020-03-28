@@ -16,10 +16,11 @@ import (
 type CookieManager struct {
 	store Store // Backing Store
 
-	sessIDCookieName string // Name of the cookie used for storing the session ID
-	cookieSecure     bool   // Tells if session ID cookies are to be sent only over HTTPS
-	cookieMaxAgeSec  int    // Max age for session ID cookies in seconds
-	cookiePath       string // Cookie path to use
+	sessIDCookieName string        // Name of the cookie used for storing the session ID
+	cookieSecure     bool          // Tells if session ID cookies are to be sent only over HTTPS
+	cookieSameSite   http.SameSite // SameSite cookie attribute
+	cookieMaxAgeSec  int           // Max age for session ID cookies in seconds
+	cookiePath       string        // Cookie path to use
 }
 
 // CookieMngrOptions defines options that may be passed when creating a new CookieManager.
@@ -31,6 +32,9 @@ type CookieMngrOptions struct {
 	// Tells if session ID cookies are allowed to be sent over unsecure HTTP too (else only HTTPS);
 	// default value is false (only HTTPS)
 	AllowHTTP bool
+
+	// SameSite attribute value
+	SameSite http.SameSite
 
 	// Max age for session ID cookies; default value is 30 days
 	CookieMaxAge time.Duration
@@ -53,6 +57,7 @@ func NewCookieManagerOptions(store Store, o *CookieMngrOptions) Manager {
 	m := &CookieManager{
 		store:            store,
 		cookieSecure:     !o.AllowHTTP,
+		cookieSameSite:   o.SameSite,
 		sessIDCookieName: o.SessIDCookieName,
 		cookiePath:       o.CookiePath,
 	}
@@ -93,6 +98,7 @@ func (m *CookieManager) Add(sess Session, w http.ResponseWriter) {
 		Value:    sess.ID(),
 		Path:     m.cookiePath,
 		HttpOnly: true,
+		SameSite: m.cookieSameSite,
 		Secure:   m.cookieSecure,
 		MaxAge:   m.cookieMaxAgeSec,
 	}
